@@ -16,7 +16,10 @@ Creates a customizable base image for working with Apache Spark
 This is the final Spark image. It uses the debian slim buster linux image.
 
 ~~~
+export SPARK_VERSION=3.2.0
+export SPARK_USER=500
 docker build . \
-  --build-arg spark_user=500 \
-  --tag `whoami`/docker-spark-base:3.1.2
+  --build-arg spark_version=${SPARK_VERSION} \
+  --build-arg spark_user=${SPARK_USER} \
+  --tag `whoami`/docker-spark-base:${SPARK_VERSION}
 ~~~
