@@ -1,22 +1,25 @@
 ARG java_image_tag=11-jre-slim
+ARG spark_version=3.2.0
+ARG spark_uid=185
 
 # build layer 1
 FROM alpine:3.14 as source
-
+ARG spark_version
 WORKDIR /sources
 
 RUN set -ex && \
   apk add --no-cache --virtual .build-deps \
   wget \
   tar \
-  && wget https://github.com/apache/spark/archive/refs/tags/v3.1.2.tar.gz \
-  && tar -xvzf v3.1.2.tar.gz \
-  && rm -r v3.1.2.tar.gz \
+  && wget https://github.com/apache/spark/archive/refs/tags/v${spark_version}.tar.gz \
+  && tar -xvzf v${spark_version}.tar.gz \
+  && rm -r v${spark_version}.tar.gz \
   && apk del .build-deps
 
 # build layer 2
 FROM maven:3.6.3-jdk-11-slim@sha256:68ce1cd457891f48d1e137c7d6a4493f60843e84c9e2634e3df1d3d5b381d36c AS build
-COPY --from=source /sources/spark-3.1.2 /spark
+ARG spark_version
+COPY --from=source /sources/spark-${spark_version} /spark
 WORKDIR /spark
 # This run command will take a while (30 minutes or more)
 # Note: This build doesn't include pyspark/r
@@ -25,7 +28,6 @@ RUN ./dev/change-scala-version.sh 2.12 && \
   -Pscala-2.12 \
   -Phadoop-3.2 \
   -Phadoop-cloud \
-  -Dhadoop.version=3.2.0 \
   -Pkubernetes \
   -Phive \
   -Phive-thriftserver \
@@ -36,8 +38,7 @@ RUN ./dev/change-scala-version.sh 2.12 && \
 # We will be copying the assembly/target/scala-2.12/jars to the final image, along with the conf templates
 
 FROM openjdk:${java_image_tag}
-
-ARG spark_uid=185
+ARG spark_uid
 
 RUN set -ex && \
     sed -i 's/http:\/\/deb.\(.*\)/https:\/\/deb.\1/g' /etc/apt/sources.list && \
